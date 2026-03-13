@@ -322,13 +322,14 @@ export class BengalaBot {
 
   // =================== Lifecycle ===================
 
-  async start(): Promise<void> {
-    // Pre-authenticate with backend
+  /** Pre-authenticate with the backend API */
+  async init(): Promise<void> {
     await this.api.authenticate();
+  }
 
-    // Launch bot
-    await this.bot.launch();
-    console.log('🤖 Bengala Bot iniciado. Esperando mensajes...');
+  /** Get the underlying Telegraf instance (for webhook setup) */
+  get telegraf(): Telegraf {
+    return this.bot;
   }
 
   stop(signal?: string): void {

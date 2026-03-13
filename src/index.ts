@@ -1,14 +1,15 @@
+import express from 'express';
 import { config, validateConfig } from './config';
 import { BengalaBot } from './bot';
 
 async function main(): Promise<void> {
-  console.log('🛍️  Bengala Max — Telegram Image Bot');
-  console.log('====================================\n');
+  console.log('🛍️  Bengala Max — Telegram Image Bot (webhook mode)');
+  console.log('===================================================\n');
 
-  // Validate configuration
   validateConfig();
 
   console.log(`📡 Backend API: ${config.apiUrl}`);
+  console.log(`🌐 Webhook domain: ${config.webhookDomain}`);
   console.log(`👤 Admin: ${config.adminEmail}`);
   console.log(
     `🔒 Usuarios autorizados: ${
@@ -19,16 +20,43 @@ async function main(): Promise<void> {
 
   const bot = new BengalaBot();
 
-  // Graceful shutdown
-  process.once('SIGINT', () => bot.stop('SIGINT'));
-  process.once('SIGTERM', () => bot.stop('SIGTERM'));
+  // Pre-authenticate with backend
+  await bot.init();
 
-  try {
-    await bot.start();
-  } catch (error: any) {
-    console.error('❌ Error fatal al iniciar el bot:', error.message);
-    process.exit(1);
-  }
+  // Set up Express server for Passenger
+  const app = express();
+
+  // Health check endpoint
+  app.get('/', (_req, res) => {
+    res.json({ status: 'ok', service: 'bengala-telegram-bot' });
+  });
+
+  // Telegram webhook endpoint
+  const webhookUrl = `${config.webhookDomain}${config.webhookPath}`;
+  app.use(bot.telegraf.webhookCallback(config.webhookPath));
+
+  // Set the webhook with Telegram
+  await bot.telegraf.telegram.setWebhook(webhookUrl);
+  console.log(`🔗 Webhook set: ${webhookUrl}`);
+
+  // Start HTTP server
+  app.listen(config.port, () => {
+    console.log(`🚀 Server listening on port ${config.port}`);
+    console.log('🤖 Bengala Bot iniciado. Esperando mensajes via webhook...');
+  });
+
+  // Graceful shutdown
+  process.once('SIGINT', () => {
+    bot.stop('SIGINT');
+    process.exit(0);
+  });
+  process.once('SIGTERM', () => {
+    bot.stop('SIGTERM');
+    process.exit(0);
+  });
 }
 
-main();
+main().catch((error) => {
+  console.error('❌ Error fatal al iniciar el bot:', error.message);
+  process.exit(1);
+});
