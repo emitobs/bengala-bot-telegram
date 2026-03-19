@@ -28,12 +28,12 @@ export const config = {
     webhookPath: process.env.WEBHOOK_PATH || '',
 };
 
+/** Whether to use polling (local dev) or webhook (production) */
+export const usePolling = !config.webhookDomain;
+
 export function validateConfig(): void {
     if (!config.telegramToken) {
         throw new Error('TELEGRAM_BOT_TOKEN is required');
-    }
-    if (!config.webhookDomain) {
-        throw new Error('WEBHOOK_DOMAIN is required (e.g. https://bot.bengalamax.uy)');
     }
     if (config.allowedUserIds.length === 0) {
         console.warn('⚠️  ALLOWED_USER_IDS not set — bot is open to everyone!');
